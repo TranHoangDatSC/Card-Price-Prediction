@@ -15,62 +15,62 @@ data_path = BASE_DIR / "CarPrice.csv"
 data = pd.read_csv(data_path)
 
 # Thử nghiệm 5 dòng đầu tiên
-data.head()
+print(data.head())
 
-# Vẽ biểu đồ phân phối giá xe 
+# Kiểm tra các giá trị null
+data.isnull().sum()
+
+# Kiểm tra các giá trị của dữ liệu
+data.info()
+
+# Mô tả dữ liệu
+print(data.describe())
+
+# Trích xuất giá trị riêng biệt
+data.CarName.unique()
+
+# Vẽ biểu đồ cột
 sns.set_style("whitegrid")
-plt.figure(figsize=(15,10))
-sns.histplot(data["price"], kde=True, bins=30)  # kde=True để có đường cong
+plt.figure(figsize=(10,5))
+sns.histplot(data["price"], stat="density", bins=30, color="skyblue", edgecolor="black")
+sns.kdeplot(data["price"], color="red", linewidth=2)
 plt.show()
 
-# Biểu đồ heatmap thể hiện mức độ tương quan giữa các cột số
-plt.figure(figsize=(20, 15))
-correlations = data.select_dtypes(include=[np.number]).corr() # Lấy ra các cột số rồi tính mức tương quan
-sns.heatmap(correlations, cmap="coolwarm", annot=True)        # annot=True để hiển thị số
+# Vẽ bản đồ nhiệt
+plt.figure(figsize=(10,8))
+correlations = data.select_dtypes(include=[np.number]).corr()  # Chỉ lấy các cột số
+sns.heatmap(correlations, cmap="coolwarm",annot=True)
 plt.show()
 
-# ---------------------------
-# CHUẨN BỊ DỮ LIỆU CHO MACHINE LEARNING
-# ---------------------------
+################## 
+# Training Model #
+##################
 
-# Chỉ chọn các cột số có ý nghĩa cho mô hình dự đoán
+# Cột mục tiêu cần dự đoán
 predict = "price"
+
+# Các features + cột mục tiêu
 data = data[["symboling", "wheelbase", "carlength", 
              "carwidth", "carheight", "curbweight", 
              "enginesize", "boreratio", "stroke", 
              "compressionratio", "horsepower", "peakrpm", 
              "citympg", "highwaympg", "price"]]
 
-# Tách dữ liệu thành input (X) và output (y)
-# X: các đặc điểm của xe (engine size, horsepower, ...)
-# y: giá xe (price)
-x = np.array(data.drop([predict], axis=1)) # Lấy tất cả trừ price
-y = np.array(data[predict])                # Chỉ lấy price    
+# Tạo tập dữ liệu X (features) và y (label)
+# drop([predict], axis=1) => bỏ cột "price" khỏi X
+x = np.array(data.drop([predict], axis=1))   # input features
+y = np.array(data[predict])                  # target (price)
 
-# Chia dữ liệu thành tập huấn luyện (train) và tập kiểm tra (test)
-# test_size=0.2 nghĩa là 20% dữ liệu dành cho test, 80% dành cho train
+# Chia dữ liệu thành tập train và test (80% train, 20% test)
 from sklearn.model_selection import train_test_split
-xtrain, xtest, ytrain, ytest = train_test_split(x, y, test_size=0.2)
+xtrain, xtest, ytrain, ytest = train_test_split(x,y,test_size=0.2)
 
+# Khởi tạo và huấn luyện mô hình Decision Tree Regressor
+from sklearn.tree import DecisionTreeRegressor
+model = DecisionTreeRegressor()
+model.fit(xtrain, ytrain)
+predictions = model.predict(xtest)
 
-# ---------------------------
-# XÂY DỰNG VÀ ĐÁNH GIÁ MÔ HÌNH
-# ---------------------------
-from sklearn.tree import DecisionTreeRegressor # Dùng cây quyết định để dự đoán giá xe
-model = DecisionTreeRegressor()     # Tạo mô hình
-model.fit(xtrain, ytrain)           # Huấn luyện mô hình với dữ liệu train
-predictions = model.predict(xtest)  # Dự đoán giá xe với dữ liệu test
-
-
-# ---------------------------
-# ĐÁNH GIÁ MÔ HÌNH
-# ---------------------------
+# Đánh giá mô hình
 from sklearn.metrics import mean_absolute_error
-
-# Điểm số chính xác của mô hình (R^2 score). Gần 1 là tốt.
-print("Score:", model.score(xtest, ytest))
-
-# Sai số trung bình tuyệt đối (Mean Absolute Error).
-# Giá trị càng nhỏ thì mô hình dự đoán càng gần với thực tế.
-mae = mean_absolute_error(ytest, predictions)
-print("Mean Absolute Error:", mae)
+print(model.score(xtest, predictions))
